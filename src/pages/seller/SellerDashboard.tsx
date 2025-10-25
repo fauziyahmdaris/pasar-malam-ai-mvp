@@ -14,10 +14,11 @@ import {
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import BulkOrderManagement from "../../components/BulkOrderManagement";
+import InventoryManagement from "../../components/products/InventoryManagement";
 import CustomBundleManagement from "../../components/CustomBundleManagement";
 import LeadTimeManagement from "../../components/LeadTimeManagement";
-import ProductManagement from "../admin/ProductManagement";
-import OrderManagement from "../admin/OrderManagement";
+import ProductManagement from "../../components/products/ProductManagement";
+import OrderManagement from "../../components/products/OrderManagement";
 import { supabase } from "../../integrations/supabase/client";
 
 const SellerDashboard: React.FC = () => {
@@ -65,14 +66,15 @@ const SellerDashboard: React.FC = () => {
         .eq("stall_id", stall.id);
 
       // Fetch orders count and revenue for the seller's stall
+
       const { data: orders } = await supabase
         .from("pre_orders")
-        .select("total_price, status")
+        .select("total_amount, status")
         .eq("stall_id", stall.id);
 
       const totalOrders = orders?.length || 0;
       const totalRevenue =
-        orders?.reduce((sum, order) => sum + (order.total_price || 0), 0) || 0;
+        orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
       const pendingOrders =
         orders?.filter((order) => order.status === "pending").length || 0;
 
@@ -99,12 +101,16 @@ const SellerDashboard: React.FC = () => {
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="kuih-raya">Kuih Raya</TabsTrigger>
         </TabsList>
+        <TabsContent value="inventory" className="space-y-4">
+          <InventoryManagement />
+        </TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

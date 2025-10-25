@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
 -- Enable RLS on user_roles
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 
--- RLS policies for user_roles
+
+DROP POLICY IF EXISTS "Admins can do everything" ON public.user_roles;
 CREATE POLICY "Admins can do everything" ON public.user_roles
   FOR ALL USING (
     EXISTS (
@@ -22,6 +23,7 @@ CREATE POLICY "Admins can do everything" ON public.user_roles
     )
   );
 
+DROP POLICY IF EXISTS "Users can read their own role" ON public.user_roles;
 CREATE POLICY "Users can read their own role" ON public.user_roles
   FOR SELECT USING (auth.uid() = user_id);
 

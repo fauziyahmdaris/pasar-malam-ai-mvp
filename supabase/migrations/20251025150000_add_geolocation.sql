@@ -19,7 +19,8 @@ USING (auth.uid() = seller_id)
 WITH CHECK (auth.uid() = seller_id);
 
 -- Add sample geolocation data for Taiping night market stalls
+-- Patch: Use stall_name instead of non-existent location column
 UPDATE public.seller_stalls
 SET geolocation = '{"latitude": 4.8526, "longitude": 100.7395}'
-WHERE location = 'Taiping, Perak - Pasar Malam Batu 2 1/2'
+WHERE stall_name = 'Taiping, Perak - Pasar Malam Batu 2 1/2'
 AND geolocation IS NULL;

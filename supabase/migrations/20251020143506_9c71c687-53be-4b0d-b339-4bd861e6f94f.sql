@@ -1,13 +1,9 @@
--- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create enum for user roles
 CREATE TYPE public.app_role AS ENUM ('admin', 'seller', 'customer');
 
--- Create enum for order status
 CREATE TYPE public.order_status AS ENUM ('pending', 'confirmed', 'ready', 'completed', 'cancelled');
 
--- Create profiles table
 CREATE TABLE public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT NOT NULL,
@@ -17,18 +13,16 @@ CREATE TABLE public.profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create user_roles table (separate from profiles for security)
 CREATE TABLE public.user_roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     role public.app_role NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, role)
 );
 
--- Create pasar_malam_locations table
 CREATE TABLE public.pasar_malam_locations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     address TEXT NOT NULL,
     city TEXT NOT NULL,
@@ -43,9 +37,8 @@ CREATE TABLE public.pasar_malam_locations (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create seller_stalls table
 CREATE TABLE public.seller_stalls (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     seller_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     location_id UUID NOT NULL REFERENCES public.pasar_malam_locations(id) ON DELETE CASCADE,
     stall_name TEXT NOT NULL,
@@ -57,9 +50,8 @@ CREATE TABLE public.seller_stalls (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create products table
 CREATE TABLE public.products (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     stall_id UUID NOT NULL REFERENCES public.seller_stalls(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
@@ -73,9 +65,8 @@ CREATE TABLE public.products (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create pre_orders table
 CREATE TABLE public.pre_orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     stall_id UUID NOT NULL REFERENCES public.seller_stalls(id) ON DELETE CASCADE,
     total_amount DECIMAL(10, 2) NOT NULL,
@@ -90,9 +81,8 @@ CREATE TABLE public.pre_orders (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create order_items table
 CREATE TABLE public.order_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID NOT NULL REFERENCES public.pre_orders(id) ON DELETE CASCADE,
     product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL,
@@ -101,7 +91,6 @@ CREATE TABLE public.order_items (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enable RLS on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pasar_malam_locations ENABLE ROW LEVEL SECURITY;
@@ -110,7 +99,6 @@ ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pre_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 
--- Create security definer function to check roles
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role public.app_role)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -126,7 +114,6 @@ AS $$
   )
 $$;
 
--- RLS Policies for profiles
 CREATE POLICY "Users can view own profile"
     ON public.profiles FOR SELECT
     USING (auth.uid() = id);
@@ -139,7 +126,6 @@ CREATE POLICY "Users can insert own profile"
     ON public.profiles FOR INSERT
     WITH CHECK (auth.uid() = id);
 
--- RLS Policies for user_roles
 CREATE POLICY "Users can view own roles"
     ON public.user_roles FOR SELECT
     USING (auth.uid() = user_id);
@@ -148,7 +134,6 @@ CREATE POLICY "Admins can manage all roles"
     ON public.user_roles FOR ALL
     USING (public.has_role(auth.uid(), 'admin'));
 
--- RLS Policies for pasar_malam_locations (public read, admin write)
 CREATE POLICY "Anyone can view active locations"
     ON public.pasar_malam_locations FOR SELECT
     USING (is_active = true);
@@ -157,7 +142,6 @@ CREATE POLICY "Admins can manage locations"
     ON public.pasar_malam_locations FOR ALL
     USING (public.has_role(auth.uid(), 'admin'));
 
--- RLS Policies for seller_stalls
 CREATE POLICY "Anyone can view active stalls"
     ON public.seller_stalls FOR SELECT
     USING (is_active = true);
@@ -170,7 +154,6 @@ CREATE POLICY "Admins can manage all stalls"
     ON public.seller_stalls FOR ALL
     USING (public.has_role(auth.uid(), 'admin'));
 
--- RLS Policies for products
 CREATE POLICY "Anyone can view available products"
     ON public.products FOR SELECT
     USING (
@@ -192,7 +175,6 @@ CREATE POLICY "Sellers can manage own products"
         )
     );
 
--- RLS Policies for pre_orders
 CREATE POLICY "Customers can view own orders"
     ON public.pre_orders FOR SELECT
     USING (auth.uid() = customer_id);
@@ -219,7 +201,6 @@ CREATE POLICY "Sellers can update stall orders"
         )
     );
 
--- RLS Policies for order_items
 CREATE POLICY "Users can view order items for their orders"
     ON public.order_items FOR SELECT
     USING (
@@ -241,7 +222,6 @@ CREATE POLICY "Customers can insert order items"
         )
     );
 
--- Create trigger function for updated_at
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -250,7 +230,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Add triggers for updated_at
 CREATE TRIGGER update_profiles_updated_at
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -271,7 +250,6 @@ CREATE TRIGGER update_pre_orders_updated_at
     BEFORE UPDATE ON public.pre_orders
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- Create trigger to auto-create profile on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql

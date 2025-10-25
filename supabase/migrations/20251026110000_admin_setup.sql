@@ -1,5 +1,4 @@
 -- Enable RLS
-ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 
 -- Create user_roles table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.user_roles (
