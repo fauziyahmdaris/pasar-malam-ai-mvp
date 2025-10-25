@@ -33,6 +33,10 @@ const Navigation = () => {
 
           {/* Auth Buttons */}
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => window.location.href = '/auth/admin'}>
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Admin</span>
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => window.location.href = '/auth'}>
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">Login</span>

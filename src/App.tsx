@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/auth/AuthCallback";
 import Dashboard from "./pages/Dashboard";
+import AdminLogin from "./pages/admin/AdminLogin";
 import NotFound from "./pages/NotFound";
 import ProductManagement from "./pages/admin/ProductManagement";
 import SellerSubscriptions from "./pages/admin/SellerSubscriptions";
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/auth/admin" element={<AdminLogin />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin/products" element={<ProductManagement />} />
           <Route path="/admin/subscriptions" element={<SellerSubscriptions />} />
