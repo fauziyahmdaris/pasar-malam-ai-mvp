@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Badge } from './ui/badge';
-import { supabase } from '../../integrations/supabase/client';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Badge } from "./ui/badge";
+import { supabase } from "../../integrations/supabase/client";
 
 interface BundleComponent {
   product_id: string;
@@ -30,10 +30,10 @@ const CustomBundleManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newBundle, setNewBundle] = useState({
-    name: '',
-    description: '',
+    name: "",
+    description: "",
     base_price: 0,
-    components: [] as BundleComponent[]
+    components: [] as BundleComponent[],
   });
 
   useEffect(() => {
@@ -44,16 +44,34 @@ const CustomBundleManagement: React.FC = () => {
   const fetchBundles = async () => {
     try {
       setLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
+
+      const { data: stall } = await supabase
+        .from("seller_stalls")
+        .select("id")
+        .eq("seller_id", user.id)
+        .single();
+
+      if (!stall) {
+        setBundles([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_bundle', true)
-        .order('created_at', { ascending: false });
+        .from("products")
+        .select("*")
+        .eq("is_bundle", true)
+        .eq("stall_id", stall.id)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setBundles(data || []);
     } catch (error) {
-      console.error('Error fetching bundles:', error);
+      console.error("Error fetching bundles:", error);
     } finally {
       setLoading(false);
     }
@@ -61,92 +79,114 @@ const CustomBundleManagement: React.FC = () => {
 
   const fetchProducts = async () => {
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
+
+      const { data: stall } = await supabase
+        .from("seller_stalls")
+        .select("id")
+        .eq("seller_id", user.id)
+        .single();
+
+      if (!stall) {
+        setProducts([]);
+        return;
+      }
+
       const { data, error } = await supabase
-        .from('products')
-        .select('id, name, price')
-        .eq('is_bundle', false)
-        .order('name');
+        .from("products")
+        .select("id, name, price")
+        .eq("is_bundle", false)
+        .eq("stall_id", stall.id)
+        .order("name");
 
       if (error) throw error;
       setProducts(data || []);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error("Error fetching products:", error);
     }
   };
 
   const addComponent = () => {
-    setNewBundle(prev => ({
+    setNewBundle((prev) => ({
       ...prev,
-      components: [...prev.components, { product_id: '', product_name: '', max_quantity: 1, price: 0 }]
+      components: [
+        ...prev.components,
+        { product_id: "", product_name: "", max_quantity: 1, price: 0 },
+      ],
     }));
   };
 
-  const updateComponent = (index: number, field: keyof BundleComponent, value: any) => {
-    setNewBundle(prev => ({
+  const updateComponent = (
+    index: number,
+    field: keyof BundleComponent,
+    value: any,
+  ) => {
+    setNewBundle((prev) => ({
       ...prev,
-      components: prev.components.map((comp, i) => 
-        i === index ? { ...comp, [field]: value } : comp
-      )
+      components: prev.components.map((comp, i) =>
+        i === index ? { ...comp, [field]: value } : comp,
+      ),
     }));
   };
 
   const removeComponent = (index: number) => {
-    setNewBundle(prev => ({
+    setNewBundle((prev) => ({
       ...prev,
-      components: prev.components.filter((_, i) => i !== index)
+      components: prev.components.filter((_, i) => i !== index),
     }));
   };
 
   const handleProductSelect = (index: number, productId: string) => {
-    const product = products.find(p => p.id === productId);
+    const product = products.find((p) => p.id === productId);
     if (product) {
-      updateComponent(index, 'product_id', productId);
-      updateComponent(index, 'product_name', product.name);
-      updateComponent(index, 'price', product.price);
+      updateComponent(index, "product_id", productId);
+      updateComponent(index, "product_name", product.name);
+      updateComponent(index, "price", product.price);
     }
   };
 
   const createBundle = async () => {
     try {
-      const { error } = await supabase
-        .from('products')
-        .insert({
-          name: newBundle.name,
-          description: newBundle.description,
-          price: newBundle.base_price,
-          is_bundle: true,
-          bundle_components: newBundle.components,
-          category: 'Custom Bundle',
-          stock_quantity: 999, // Unlimited for bundles
-          is_available: true
-        });
+      const { error } = await supabase.from("products").insert({
+        name: newBundle.name,
+        description: newBundle.description,
+        price: newBundle.base_price,
+        is_bundle: true,
+        bundle_components: newBundle.components,
+        category: "Custom Bundle",
+        stock_quantity: 999, // Unlimited for bundles
+        is_available: true,
+      });
 
       if (error) throw error;
 
       setNewBundle({
-        name: '',
-        description: '',
+        name: "",
+        description: "",
         base_price: 0,
-        components: []
+        components: [],
       });
       setShowCreateForm(false);
       fetchBundles();
     } catch (error) {
-      console.error('Error creating bundle:', error);
+      console.error("Error creating bundle:", error);
     }
   };
 
   const deleteBundle = async (bundleId: string) => {
     try {
       const { error } = await supabase
-        .from('products')
+        .from("products")
         .delete()
-        .eq('id', bundleId);
+        .eq("id", bundleId);
 
       if (error) throw error;
       fetchBundles();
     } catch (error) {
-      console.error('Error deleting bundle:', error);
+      console.error("Error deleting bundle:", error);
     }
   };
 
@@ -170,7 +210,9 @@ const CustomBundleManagement: React.FC = () => {
               <Input
                 id="bundle-name"
                 value={newBundle.name}
-                onChange={(e) => setNewBundle(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  setNewBundle((prev) => ({ ...prev, name: e.target.value }))
+                }
                 placeholder="e.g., Raya Kuih Set"
               />
             </div>
@@ -179,7 +221,12 @@ const CustomBundleManagement: React.FC = () => {
               <Textarea
                 id="bundle-description"
                 value={newBundle.description}
-                onChange={(e) => setNewBundle(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setNewBundle((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
                 placeholder="Describe your custom bundle..."
               />
             </div>
@@ -189,23 +236,33 @@ const CustomBundleManagement: React.FC = () => {
                 id="base-price"
                 type="number"
                 value={newBundle.base_price}
-                onChange={(e) => setNewBundle(prev => ({ ...prev, base_price: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) =>
+                  setNewBundle((prev) => ({
+                    ...prev,
+                    base_price: parseFloat(e.target.value) || 0,
+                  }))
+                }
                 placeholder="0.00"
               />
             </div>
-            
+
             <div>
               <Label>Bundle Components</Label>
               <div className="space-y-2">
                 {newBundle.components.map((component, index) => (
-                  <div key={index} className="flex gap-2 items-center p-2 border rounded">
+                  <div
+                    key={index}
+                    className="flex gap-2 items-center p-2 border rounded"
+                  >
                     <select
                       value={component.product_id}
-                      onChange={(e) => handleProductSelect(index, e.target.value)}
+                      onChange={(e) =>
+                        handleProductSelect(index, e.target.value)
+                      }
                       className="flex-1 p-2 border rounded"
                     >
                       <option value="">Select Product</option>
-                      {products.map(product => (
+                      {products.map((product) => (
                         <option key={product.id} value={product.id}>
                           {product.name} - RM {product.price}
                         </option>
@@ -215,7 +272,13 @@ const CustomBundleManagement: React.FC = () => {
                       type="number"
                       placeholder="Max Qty"
                       value={component.max_quantity}
-                      onChange={(e) => updateComponent(index, 'max_quantity', parseInt(e.target.value) || 1)}
+                      onChange={(e) =>
+                        updateComponent(
+                          index,
+                          "max_quantity",
+                          parseInt(e.target.value) || 1,
+                        )
+                      }
                       className="w-20"
                     />
                     <Button
@@ -235,7 +298,10 @@ const CustomBundleManagement: React.FC = () => {
 
             <div className="flex gap-2">
               <Button onClick={createBundle}>Create Bundle</Button>
-              <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateForm(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -264,12 +330,15 @@ const CustomBundleManagement: React.FC = () => {
                         <h3 className="font-semibold">{bundle.name}</h3>
                         <Badge variant="secondary">Bundle</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{bundle.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {bundle.description}
+                      </p>
                       <div className="text-sm">
                         Base Price: RM {bundle.base_price.toFixed(2)}
                       </div>
                       <div className="text-sm">
-                        Components: {bundle.bundle_components?.length || 0} items
+                        Components: {bundle.bundle_components?.length || 0}{" "}
+                        items
                       </div>
                     </div>
                     <div className="text-right">
@@ -282,20 +351,26 @@ const CustomBundleManagement: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                  
-                  {bundle.bundle_components && bundle.bundle_components.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="font-medium mb-2">Components:</h4>
-                      <div className="space-y-1">
-                        {bundle.bundle_components.map((component: any, index: number) => (
-                          <div key={index} className="flex justify-between text-sm">
-                            <span>{component.product_name}</span>
-                            <span>Max: {component.max_quantity}</span>
-                          </div>
-                        ))}
+
+                  {bundle.bundle_components &&
+                    bundle.bundle_components.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="font-medium mb-2">Components:</h4>
+                        <div className="space-y-1">
+                          {bundle.bundle_components.map(
+                            (component: any, index: number) => (
+                              <div
+                                key={index}
+                                className="flex justify-between text-sm"
+                              >
+                                <span>{component.product_name}</span>
+                                <span>Max: {component.max_quantity}</span>
+                              </div>
+                            ),
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </Card>
               ))}
             </div>

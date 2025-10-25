@@ -12,7 +12,9 @@ import { ArrowLeft, Trash2, ShoppingCart, Calendar, Clock } from "lucide-react";
 const generateTrackingCode = () => {
   const prefix = "PM";
   const timestamp = Date.now().toString().slice(-6);
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  const random = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
   return `${prefix}${timestamp}${random}`;
 };
 
@@ -40,7 +42,9 @@ const Cart = () => {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       navigate("/auth");
     }
@@ -59,7 +63,9 @@ const Cart = () => {
   };
 
   const removeItem = (productId: string) => {
-    const updatedCart = cartItems.filter(item => item.productId !== productId);
+    const updatedCart = cartItems.filter(
+      (item) => item.productId !== productId,
+    );
     updateCart(updatedCart);
     toast({
       title: "Item removed",
@@ -69,14 +75,17 @@ const Cart = () => {
 
   const updateQuantity = (productId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
-    const updatedCart = cartItems.map(item =>
-      item.productId === productId ? { ...item, quantity: newQuantity } : item
+    const updatedCart = cartItems.map((item) =>
+      item.productId === productId ? { ...item, quantity: newQuantity } : item,
     );
     updateCart(updatedCart);
   };
 
   const calculateTotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cartItems.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0,
+    );
   };
 
   const handleCheckout = async () => {
@@ -101,7 +110,9 @@ const Cart = () => {
     setLoading(true);
     try {
       // Verify user authentication
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         toast({
           title: "Authentication Required",
@@ -113,7 +124,7 @@ const Cart = () => {
       }
 
       // Verify products are still available and prices are current
-      const productIds = cartItems.map(item => item.productId);
+      const productIds = cartItems.map((item) => item.productId);
       const { data: currentProducts } = await supabase
         .from("products")
         .select("id, price, is_available, stock_quantity")
@@ -122,16 +133,18 @@ const Cart = () => {
       // Check for product availability and price changes
       const unavailableItems = [];
       const priceChangedItems = [];
-      
-      cartItems.forEach(item => {
-        const currentProduct = currentProducts?.find(p => p.id === item.productId);
+
+      cartItems.forEach((item) => {
+        const currentProduct = currentProducts?.find(
+          (p) => p.id === item.productId,
+        );
         if (!currentProduct || !currentProduct.is_available) {
           unavailableItems.push(item.productName);
         } else if (currentProduct.price !== item.price) {
           priceChangedItems.push({
             name: item.productName,
             oldPrice: item.price,
-            newPrice: currentProduct.price
+            newPrice: currentProduct.price,
           });
         }
       });
@@ -139,7 +152,7 @@ const Cart = () => {
       if (unavailableItems.length > 0) {
         toast({
           title: "Products Unavailable",
-          description: `These items are no longer available: ${unavailableItems.join(", ")}`
+          description: `These items are no longer available: ${unavailableItems.join(", ")}`,
         });
         setLoading(false);
         return;
@@ -148,24 +161,30 @@ const Cart = () => {
       if (priceChangedItems.length > 0) {
         toast({
           title: "Price Changes Detected",
-          description: "Some prices have changed. Please refresh your cart."
+          description: "Some prices have changed. Please refresh your cart.",
         });
         setLoading(false);
         return;
       }
 
       // Group items by stall
-      const itemsByStall = cartItems.reduce((acc, item) => {
-        if (!acc[item.stallId]) {
-          acc[item.stallId] = [];
-        }
-        acc[item.stallId].push(item);
-        return acc;
-      }, {} as Record<string, CartItem[]>);
+      const itemsByStall = cartItems.reduce(
+        (acc, item) => {
+          if (!acc[item.stallId]) {
+            acc[item.stallId] = [];
+          }
+          acc[item.stallId].push(item);
+          return acc;
+        },
+        {} as Record<string, CartItem[]>,
+      );
 
       // Create order for each stall
       for (const [stallId, items] of Object.entries(itemsByStall)) {
-        const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const totalAmount = items.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0,
+        );
 
         const { data: order, error: orderError } = await supabase
           .from("pre_orders")
@@ -180,7 +199,7 @@ const Cart = () => {
             order_status: "pending",
             tracking_code: generateTrackingCode(),
             market_location: "Taiping, Perak - Pasar Malam Batu 2 1/2",
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
           })
           .select()
           .single();
@@ -188,13 +207,13 @@ const Cart = () => {
         if (orderError) throw orderError;
 
         // Insert order items
-        const orderItems = items.map(item => ({
+        const orderItems = items.map((item) => ({
           order_id: order.id,
           product_id: item.productId,
           quantity: item.quantity,
           unit_price: item.price,
           subtotal: item.price * item.quantity,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         }));
 
         const { error: itemsError } = await supabase
@@ -202,6 +221,22 @@ const Cart = () => {
           .insert(orderItems);
 
         if (itemsError) throw itemsError;
+
+        // Decrement stock quantity
+        for (const item of items) {
+          const { error: decrementError } = await supabase.rpc(
+            "decrement_stock",
+            {
+              product_id_in: item.productId,
+              quantity_in: item.quantity,
+            },
+          );
+
+          if (decrementError) {
+            console.error("Error decrementing stock:", decrementError);
+            // Handle error, e.g., by logging it or attempting to roll back the order
+          }
+        }
       }
 
       localStorage.removeItem("cart");
@@ -225,7 +260,7 @@ const Cart = () => {
   const getTomorrowDate = () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
+    return tomorrow.toISOString().split("T")[0];
   };
 
   if (cartItems.length === 0) {
@@ -277,7 +312,9 @@ const Cart = () => {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h3 className="font-semibold">{item.productName}</h3>
-                    <p className="text-sm text-muted-foreground">{item.stallName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.stallName}
+                    </p>
                   </div>
                   <Button
                     variant="ghost"
@@ -292,7 +329,9 @@ const Cart = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                      onClick={() =>
+                        updateQuantity(item.productId, item.quantity - 1)
+                      }
                     >
                       -
                     </Button>
@@ -300,12 +339,16 @@ const Cart = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                      onClick={() =>
+                        updateQuantity(item.productId, item.quantity + 1)
+                      }
                     >
                       +
                     </Button>
                   </div>
-                  <p className="font-bold">RM {(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="font-bold">
+                    RM {(item.price * item.quantity).toFixed(2)}
+                  </p>
                 </div>
               </Card>
             ))}

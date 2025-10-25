@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="white"/>
+  <g transform="translate(25,25)">
+    <!-- QR Code pattern (simplified) -->
+    <rect x="0" y="0" width="150" height="150" fill="white" stroke="#00B14F" stroke-width="5"/>
+    <g fill="#00B14F">
+      <!-- Position detection patterns -->
+      <rect x="10" y="10" width="30" height="30"/>
+      <rect x="110" y="10" width="30" height="30"/>
+      <rect x="10" y="110" width="30" height="30"/>
+      
+      <!-- QR code modules (simplified pattern) -->
+      <rect x="50" y="10" width="10" height="10"/>
+      <rect x="70" y="10" width="10" height="10"/>
+      <rect x="90" y="10" width="10" height="10"/>
+      
+      <rect x="10" y="50" width="10" height="10"/>
+      <rect x="30" y="50" width="10" height="10"/>
+      <rect x="50" y="50" width="10" height="10"/>
+      <rect x="70" y="50" width="10" height="10"/>
+      <rect x="110" y="50" width="10" height="10"/>
+      <rect x="130" y="50" width="10" height="10"/>
+      
+      <rect x="10" y="70" width="10" height="10"/>
+      <rect x="50" y="70" width="10" height="10"/>
+      <rect x="90" y="70" width="10" height="10"/>
+      <rect x="130" y="70" width="10" height="10"/>
+      
+      <rect x="10" y="90" width="10" height="10"/>
+      <rect x="30" y="90" width="10" height="10"/>
+      <rect x="70" y="90" width="10" height="10"/>
+      <rect x="90" y="90" width="10" height="10"/>
+      <rect x="110" y="90" width="10" height="10"/>
+      
+      <rect x="50" y="110" width="10" height="10"/>
+      <rect x="70" y="110" width="10" height="10"/>
+      <rect x="90" y="110" width="10" height="10"/>
+      <rect x="130" y="110" width="10" height="10"/>
+      
+      <rect x="50" y="130" width="10" height="10"/>
+      <rect x="90" y="130" width="10" height="10"/>
+      <rect x="110" y="130" width="10" height="10"/>
+    </g>
+    
+    <!-- GrabPay Logo -->
+    <g transform="translate(60,60)">
+      <rect x="0" y="0" width="30" height="30" fill="white"/>
+      <text x="15" y="20" font-family="Arial" font-size="8" text-anchor="middle" fill="#00B14F" font-weight="bold">GrabPay</text>
+    </g>
+  </g>
+</svg>

@@ -1,318 +1,319 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
-import { ArrowLeft, Plus, Edit, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
-const ProductManagement = () => {
-  const navigate = useNavigate();
-  const [products, setProducts] = useState<any[]>([]);
-  const [stalls, setStalls] = useState<any[]>([]);
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock_quantity: number;
+}
+
+const ProductManagement: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newProduct, setNewProduct] = useState({
     name: "",
     description: "",
-    price: "",
-    stock_quantity: "",
-    min_preorder_quantity: "1",
-    category: "",
-    stall_id: "",
-    seller_tiktok: "",
+    price: 0,
+    stock_quantity: 0,
   });
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
-    checkAdminAccess();
-    fetchData();
+    fetchProducts();
   }, []);
 
-  const checkAdminAccess = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-
-    if (!roles?.some(r => r.role === "admin")) {
-      toast.error("Access denied");
-      navigate("/dashboard");
-    }
-  };
-
-  const fetchData = async () => {
+  const fetchProducts = async () => {
     try {
-      const [productsResult, stallsResult] = await Promise.all([
-        supabase.from("products").select("*, seller_stalls(stall_name, seller_id, profiles(full_name))"),
-        supabase.from("seller_stalls").select("*, profiles(full_name)")
-      ]);
+      setLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
 
-      if (productsResult.data) setProducts(productsResult.data);
-      if (stallsResult.data) setStalls(stallsResult.data);
-    } catch (error: any) {
-      toast.error("Failed to load data");
+      const { data: stall } = await supabase
+        .from("seller_stalls")
+        .select("id")
+        .eq("seller_id", user.id)
+        .single();
+
+      if (!stall) {
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, description, price, stock_quantity")
+        .eq("stall_id", stall.id)
+        .order("name");
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error("Error fetching products:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const addProduct = async () => {
     try {
-      const productData = {
-        name: formData.name,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        stock_quantity: parseInt(formData.stock_quantity),
-        min_preorder_quantity: parseInt(formData.min_preorder_quantity),
-        category: formData.category,
-        stall_id: formData.stall_id,
-      };
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
 
-      if (editingId) {
-        const { error } = await supabase
-          .from("products")
-          .update(productData)
-          .eq("id", editingId);
+      const { data: stall } = await supabase
+        .from("seller_stalls")
+        .select("id")
+        .eq("seller_id", user.id)
+        .single();
 
-        if (error) throw error;
-        toast.success("Product updated successfully");
-      } else {
-        const { error } = await supabase
-          .from("products")
-          .insert(productData);
+      if (!stall) throw new Error("Stall not found");
 
-        if (error) throw error;
-        toast.success("Product created successfully");
-      }
-
-      setFormData({
-        name: "",
-        description: "",
-        price: "",
-        stock_quantity: "",
-        min_preorder_quantity: "1",
-        category: "",
-        stall_id: "",
-        seller_tiktok: "",
+      const { error } = await supabase.from("products").insert({
+        ...newProduct,
+        stall_id: stall.id,
       });
-      setEditingId(null);
-      setDialogOpen(false);
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message);
+
+      if (error) throw error;
+
+      setNewProduct({ name: "", description: "", price: 0, stock_quantity: 0 });
+      setShowAddForm(false);
+      fetchProducts();
+    } catch (error) {
+      console.error("Error adding product:", error);
     }
   };
 
-  const handleEdit = (product: any) => {
-    setFormData({
-      name: product.name,
-      description: product.description || "",
-      price: product.price.toString(),
-      stock_quantity: product.stock_quantity.toString(),
-      min_preorder_quantity: product.min_preorder_quantity.toString(),
-      category: product.category,
-      stall_id: product.stall_id,
-      seller_tiktok: "",
-    });
-    setEditingId(product.id);
-    setDialogOpen(true);
+  const startEditing = (product: Product) => {
+    setEditingProduct(product);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+  const cancelEditing = () => {
+    setEditingProduct(null);
+  };
+
+  const updateProduct = async () => {
+    if (!editingProduct) return;
 
     try {
-      const { error } = await supabase.from("products").delete().eq("id", id);
+      const { error } = await supabase
+        .from("products")
+        .update({
+          name: editingProduct.name,
+          description: editingProduct.description,
+          price: editingProduct.price,
+          stock_quantity: editingProduct.stock_quantity,
+        })
+        .eq("id", editingProduct.id);
+
       if (error) throw error;
-      toast.success("Product deleted");
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message);
+
+      setEditingProduct(null);
+      fetchProducts();
+    } catch (error) {
+      console.error("Error updating product:", error);
     }
   };
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
+  const deleteProduct = async (productId: string) => {
+    if (window.confirm("Are you sure you want to delete this product?")) {
+      try {
+        const { error } = await supabase
+          .from("products")
+          .delete()
+          .eq("id", productId);
+
+        if (error) throw error;
+
+        fetchProducts();
+      } catch (error) {
+        console.error("Error deleting product:", error);
+      }
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <header className="border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <h1 className="text-2xl font-bold">Product Management</h1>
-          </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => {
-                setEditingId(null);
-                setFormData({
-                  name: "",
-                  description: "",
-                  price: "",
-                  stock_quantity: "",
-                  min_preorder_quantity: "1",
-                  category: "",
-                  stall_id: "",
-                  seller_tiktok: "",
-                });
-              }}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Product
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{editingId ? "Edit" : "Add"} Product</DialogTitle>
-                <DialogDescription>
-                  Fill in the product details below
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="stall_id">Seller Stall *</Label>
-                  <Select value={formData.stall_id} onValueChange={(value) => setFormData({...formData, stall_id: value})} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select stall" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stalls.map(stall => (
-                        <SelectItem key={stall.id} value={stall.id}>
-                          {stall.stall_name} - {stall.profiles?.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="name">Product Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="price">Price (RM) *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="category">Category *</Label>
-                    <Input
-                      id="category"
-                      value={formData.category}
-                      onChange={(e) => setFormData({...formData, category: e.target.value})}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="stock">Stock Quantity *</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      value={formData.stock_quantity}
-                      onChange={(e) => setFormData({...formData, stock_quantity: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="min_order">Min Pre-order Qty *</Label>
-                    <Input
-                      id="min_order"
-                      type="number"
-                      value={formData.min_preorder_quantity}
-                      onChange={(e) => setFormData({...formData, min_preorder_quantity: e.target.value})}
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="tiktok">Seller TikTok (Optional)</Label>
-                  <Input
-                    id="tiktok"
-                    value={formData.seller_tiktok}
-                    onChange={(e) => setFormData({...formData, seller_tiktok: e.target.value})}
-                    placeholder="@username"
-                  />
-                </div>
-                <Button type="submit" className="w-full">
-                  {editingId ? "Update" : "Create"} Product
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </header>
+    <Card>
+      <CardHeader>
+        <CardTitle>Product Management</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button onClick={() => setShowAddForm(!showAddForm)} className="mb-4">
+          {showAddForm ? "Cancel" : "Add Product"}
+        </Button>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {products.map((product) => (
-            <Card key={product.id}>
-              <CardHeader>
-                <CardTitle>{product.name}</CardTitle>
-                <CardDescription>
-                  {product.seller_stalls?.stall_name} - {product.seller_stalls?.profiles?.full_name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <p><strong>Category:</strong> {product.category}</p>
-                  <p><strong>Price:</strong> RM {product.price}</p>
-                  <p><strong>Stock:</strong> {product.stock_quantity}</p>
-                  <p><strong>Min Order:</strong> {product.min_preorder_quantity}</p>
-                  <p className="text-muted-foreground">{product.description}</p>
+        {showAddForm && (
+          <div className="space-y-4 mb-4">
+            <div>
+              <Label htmlFor="product-name">Product Name</Label>
+              <Input
+                id="product-name"
+                value={newProduct.name}
+                onChange={(e) =>
+                  setNewProduct({ ...newProduct, name: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="product-description">Description</Label>
+              <Textarea
+                id="product-description"
+                value={newProduct.description}
+                onChange={(e) =>
+                  setNewProduct({ ...newProduct, description: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="product-price">Price</Label>
+              <Input
+                id="product-price"
+                type="number"
+                value={newProduct.price}
+                onChange={(e) =>
+                  setNewProduct({
+                    ...newProduct,
+                    price: parseFloat(e.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="product-stock">Stock Quantity</Label>
+              <Input
+                id="product-stock"
+                type="number"
+                value={newProduct.stock_quantity}
+                onChange={(e) =>
+                  setNewProduct({
+                    ...newProduct,
+                    stock_quantity: parseInt(e.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+            <Button onClick={addProduct}>Add Product</Button>
+          </div>
+        )}
+
+        {editingProduct && (
+          <div className="space-y-4 mb-4">
+            <h3 className="font-semibold">Editing: {editingProduct.name}</h3>
+            <div>
+              <Label htmlFor="edit-product-name">Product Name</Label>
+              <Input
+                id="edit-product-name"
+                value={editingProduct.name}
+                onChange={(e) =>
+                  setEditingProduct({ ...editingProduct, name: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-description">Description</Label>
+              <Textarea
+                id="edit-product-description"
+                value={editingProduct.description}
+                onChange={(e) =>
+                  setEditingProduct({
+                    ...editingProduct,
+                    description: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-price">Price</Label>
+              <Input
+                id="edit-product-price"
+                type="number"
+                value={editingProduct.price}
+                onChange={(e) =>
+                  setEditingProduct({
+                    ...editingProduct,
+                    price: parseFloat(e.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-product-stock">Stock Quantity</Label>
+              <Input
+                id="edit-product-stock"
+                type="number"
+                value={editingProduct.stock_quantity}
+                onChange={(e) =>
+                  setEditingProduct({
+                    ...editingProduct,
+                    stock_quantity: parseInt(e.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={updateProduct}>Update Product</Button>
+              <Button variant="outline" onClick={cancelEditing}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <p>Loading products...</p>
+        ) : (
+          <div className="space-y-4">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="flex items-center justify-between p-4 border rounded"
+              >
+                <div>
+                  <h3 className="font-semibold">{product.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {product.description}
+                  </p>
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(product.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                <div className="text-right">
+                  <p className="font-semibold">RM {product.price.toFixed(2)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Stock: {product.stock_quantity}
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => startEditing(product)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteProduct(product.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </main>
-    </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
