@@ -48,14 +48,38 @@ const Auth = () => {
       return;
     }
 
-    // Validate password strength and check for breaches
-    const passwordValidation = await validatePassword(signupData.password);
-    if (!passwordValidation.valid) {
-      toast.error(passwordValidation.message || "Password is not secure enough");
-      return;
+    try {
+      setLoading(true);
+      
+      // Check password strength
+      const passwordCheck = await validatePassword(signupData.password);
+      if (!passwordCheck.isValid) {
+        toast.error(passwordCheck.message || 'Password validation failed');
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: signupData.email,
+        password: signupData.password,
+        options: {
+          data: {
+            full_name: signupData.fullName,
+            phone: signupData.phone,
+            role: signupData.role,
+          },
+          emailRedirectTo: 'https://pasarmalamai.netlify.app/auth/callback'
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success("Check your email for the confirmation link!");
+    } catch (error: any) {
+      toast.error(error.message || "An error occurred during signup");
+    } finally {
+      setLoading(false);
     }
 
-    setLoading(true);
     try {
       // Create user with role-based access control
       const { error } = await supabase.auth.signUp({

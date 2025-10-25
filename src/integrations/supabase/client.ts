@@ -4,13 +4,10 @@ import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SITE_URL = 'https://pasarmalamai.netlify.app';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
-
-const SITE_URL = import.meta.env.PROD 
-  ? 'https://pasarmalamai.netlify.app'
-  : 'http://localhost:3000';
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -19,6 +16,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     flowType: 'pkce',
     detectSessionInUrl: true,
-    redirect_to: `${SITE_URL}/auth/callback`,
+  },
+  global: {
+    headers: {
+      'X-Site-URL': SITE_URL
+    }
   }
 });

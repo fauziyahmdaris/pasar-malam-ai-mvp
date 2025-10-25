@@ -2,7 +2,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
 
-// Password strength validation schema
+// Password validation interface
+export interface PasswordValidationResult {
+  isValid: boolean;
+  message?: string;
+}
+
+// Password validation schema
 export const passwordSchema = z
   .string()
   .min(12, "Password must be at least 12 characters")
@@ -11,7 +17,7 @@ export const passwordSchema = z
   .regex(/[0-9]/, "Password must contain at least one number")
   .regex(
     /[^A-Za-z0-9]/,
-    "Password must contain at least one special character",
+    "Password must contain at least one special character"
   );
 
 // Check if user has specific role
@@ -152,27 +158,35 @@ export const checkPasswordBreached = async (
 
 // Validate password and check for breaches
 export const validatePassword = async (
-  password: string,
-): Promise<{ valid: boolean; message?: string }> => {
+  password: string
+): Promise<PasswordValidationResult> => {
   try {
-    // Validate password strength
+    // Validate password strength using zod schema
     passwordSchema.parse(password);
 
     // Check if password has been breached
     const isBreached = await checkPasswordBreached(password);
     if (isBreached) {
       return {
-        valid: false,
-        message:
-          "This password appears in data breaches. Please choose a different password.",
+        isValid: false,
+        message: "This password appears in data breaches. Please choose a different password."
       };
     }
 
-    return { valid: true };
+    return { 
+      isValid: true,
+      message: "Password meets all requirements"
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { valid: false, message: error.errors[0].message };
+      return { 
+        isValid: false, 
+        message: error.errors[0].message 
+      };
     }
-    return { valid: false, message: "Password validation failed" };
+    return { 
+      isValid: false, 
+      message: "Password validation failed" 
+    };
   }
 };
