@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   CONSTRAINT valid_bundle_config CHECK (
     NOT is_bundle OR (
-      is_bundle AND bundle_components IS NOT NULL AND 
+      is_bundle AND bundle_components IS NOT NULL AND
       jsonb_typeof(bundle_components) = 'array'
     )
   )
@@ -103,6 +103,7 @@ CREATE POLICY "Allow admin manage product categories"
   );
 
 -- Products (sellers can manage their own, customers can view active ones)
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 DROP POLICY IF EXISTS "Allow sellers to manage their products" ON public.products;
 CREATE POLICY "Allow sellers to manage their products"
   ON public.products
