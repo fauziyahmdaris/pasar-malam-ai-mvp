@@ -25,7 +25,7 @@ const SubscriptionManagement: React.FC = () => {
     },
     {
       id: 'raya',
-      name: 'Peniaga Raya',
+      name: 'Peniaga Kuih Raya',
       price: 249,
       duration: '5 months',
       description: 'Premium package for Kuih Raya sellers',
@@ -125,7 +125,7 @@ const SubscriptionManagement: React.FC = () => {
                 <tr className="border-b">
                   <th className="text-left p-2">Feature</th>
                   <th className="text-center p-2">Peniaga Perintis</th>
-                  <th className="text-center p-2">Peniaga Raya</th>
+                  <th className="text-center p-2">Peniaga Kuih Raya</th>
                 </tr>
               </thead>
               <tbody>
@@ -172,7 +172,7 @@ const SubscriptionManagement: React.FC = () => {
 
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle>Why Choose Peniaga Raya?</CardTitle>
+          <CardTitle>Why Choose Peniaga Kuih Raya?</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

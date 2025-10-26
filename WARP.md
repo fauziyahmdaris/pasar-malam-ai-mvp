@@ -147,7 +147,7 @@ VITE_SUPABASE_URL=<your-supabase-url>
 VITE_SUPABASE_PUBLISHABLE_KEY=<your-anon-key>
 ```
 
-**Note:** The `.gitignore` only excludes `node_modules`. The `.env` file is currently tracked in git (security risk). Consider adding `.env` to `.gitignore` and using `.env.example` for templates.
+**Security:** The `.env` file is excluded from version control. Use `.env.example` as a template for setting up environment variables.
 
 ## Deployment
 
@@ -216,7 +216,7 @@ const { data, isLoading } = useQuery({
 
 ## Product-Specific Business Logic
 
-**Kuih Raya Subscription (Peniaga Raya):**
+**Kuih Raya Subscription (Peniaga Kuih Raya):**
 - RM249 for 5-month subscription
 - Managed in `SubscriptionManagement.tsx` and `SubscriptionPayment.tsx`
 - Grants access to bulk order features and custom bundles
