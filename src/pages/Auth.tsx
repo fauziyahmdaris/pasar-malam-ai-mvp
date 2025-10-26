@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ShoppingBag, Store } from "lucide-react";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { validatePassword } from "@/utils/securityMiddleware";
 
@@ -133,6 +133,11 @@ const Auth = () => {
             </TabsList>
             
             <TabsContent value="login">
+              <div className="mb-4 p-3 bg-primary/10 rounded-lg">
+                <p className="text-sm text-center">
+                  🎯 <strong>New here?</strong> Click <strong>Sign Up</strong> tab above to create your account!
+                </p>
+              </div>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
@@ -176,7 +181,15 @@ const Auth = () => {
                   {loading ? "Logging in..." : "Log In"}
                 </Button>
               </form>
-              <div className="mt-4">
+              <div className="mt-4 space-y-2">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
                 <WhatsAppButton 
                   message="Hi Qash! I need help with login on Pasar Malam AI" 
                   className="w-full"
@@ -185,6 +198,16 @@ const Auth = () => {
             </TabsContent>
             
             <TabsContent value="signup">
+              <div className="mb-4 space-y-2">
+                <div className="p-3 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-lg">
+                  <p className="text-sm text-center font-medium">
+                    🚀 <strong>Join the Digital Revolution!</strong>
+                  </p>
+                  <p className="text-xs text-center mt-1 text-muted-foreground">
+                    Help save Malaysia's Pasar Malam culture through technology
+                  </p>
+                </div>
+              </div>
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Full Name</Label>
@@ -253,15 +276,21 @@ const Auth = () => {
                       type="button" 
                       variant={signupData.role === "customer" ? "default" : "outline"}
                       onClick={() => setSignupData({ ...signupData, role: "customer", sellerCategory: "" })}
+                      className="h-auto py-3 flex flex-col items-center"
                     >
-                      Customer
+                      <ShoppingBag className="w-5 h-5 mb-1" />
+                      <span>Customer</span>
+                      <span className="text-xs font-normal mt-1">Browse & Buy</span>
                     </Button>
                     <Button 
                       type="button" 
                       variant={signupData.role === "seller" ? "default" : "outline"}
                       onClick={() => setSignupData({ ...signupData, role: "seller" })}
+                      className="h-auto py-3 flex flex-col items-center"
                     >
-                      Seller (Peniaga)
+                      <Store className="w-5 h-5 mb-1" />
+                      <span>Seller</span>
+                      <span className="text-xs font-normal mt-1">Peniaga</span>
                     </Button>
                   </div>
                 </div>
@@ -292,11 +321,22 @@ const Auth = () => {
                   {loading ? "Creating account..." : "Sign Up"}
                 </Button>
               </form>
-              <div className="mt-4">
+              <div className="mt-4 space-y-3">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Need Help?</span>
+                  </div>
+                </div>
                 <WhatsAppButton 
                   message="Hi Qash! I need help with registration on Pasar Malam AI" 
                   className="w-full"
                 />
+                <p className="text-xs text-center text-muted-foreground mt-3">
+                  Already have an account? Click <strong>Login</strong> tab above
+                </p>
               </div>
             </TabsContent>
           </Tabs>
