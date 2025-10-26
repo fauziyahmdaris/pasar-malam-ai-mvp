@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { z } from "zod";
 import WhatsAppButton from "@/components/WhatsAppButton";
@@ -33,6 +34,7 @@ const Auth = () => {
     phone: "",
     password: "",
     role: "customer" as "customer" | "seller",
+    sellerCategory: "" as string,
   });
   const [loginData, setLoginData] = useState({
     email: "",
@@ -48,9 +50,8 @@ const Auth = () => {
       return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
-      
       // Check password strength
       const passwordCheck = await validatePassword(signupData.password);
       if (!passwordCheck.isValid) {
@@ -58,31 +59,8 @@ const Auth = () => {
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
-        email: signupData.email,
-        password: signupData.password,
-        options: {
-          data: {
-            full_name: signupData.fullName,
-            phone: signupData.phone,
-            role: signupData.role,
-          },
-          emailRedirectTo: 'https://pasarmalamai.netlify.app/auth/callback'
-        }
-      });
-
-      if (error) throw error;
-
-      toast.success("Check your email for the confirmation link!");
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred during signup");
-    } finally {
-      setLoading(false);
-    }
-
-    try {
       // Create user with role-based access control
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: signupData.email,
         password: signupData.password,
         options: {
@@ -90,25 +68,17 @@ const Auth = () => {
             full_name: signupData.fullName,
             phone_number: signupData.phone,
             role: signupData.role,
+            seller_category: signupData.sellerCategory,
             is_approved: signupData.role === "customer" ? true : false, // Sellers need approval
           },
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: 'https://pasarmalamai.netlify.app/auth/callback',
         },
       });
 
       if (error) throw error;
       
-      // Create role entry in user_roles table
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("user_roles").insert({
-          user_id: user.id,
-          role: signupData.role
-        });
-      }
-      
-      toast.success("Account created successfully! You can now log in.");
-      setSignupData({ fullName: "", email: "", phone: "", password: "", role: "customer" });
+      toast.success("Account created successfully! Please check your email for confirmation.");
+      setSignupData({ fullName: "", email: "", phone: "", password: "", role: "customer", sellerCategory: "" });
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
     } finally {
@@ -247,7 +217,7 @@ const Auth = () => {
                     <Button 
                       type="button" 
                       variant={signupData.role === "customer" ? "default" : "outline"}
-                      onClick={() => setSignupData({ ...signupData, role: "customer" })}
+                      onClick={() => setSignupData({ ...signupData, role: "customer", sellerCategory: "" })}
                     >
                       Customer
                     </Button>
@@ -259,12 +229,30 @@ const Auth = () => {
                       Seller (Peniaga)
                     </Button>
                   </div>
-                  {signupData.role === "seller" && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Note: Seller accounts require approval and a subscription fee of RM50/2 months.
-                    </p>
-                  )}
                 </div>
+                {signupData.role === "seller" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="seller-category">Seller Category</Label>
+                    <Select 
+                      value={signupData.sellerCategory} 
+                      onValueChange={(value) => setSignupData({ ...signupData, sellerCategory: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your business type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pasar-malam">Peniaga Pasar Malam</SelectItem>
+                        <SelectItem value="pasar-tani">Peniaga Pasar Tani</SelectItem>
+                        <SelectItem value="gerai-tepi-jalan">Gerai Tepi Jalan</SelectItem>
+                        <SelectItem value="kuih-raya">Peniaga Kuih Raya</SelectItem>
+                        <SelectItem value="home-business">Home Business</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Note: Subscription fee varies by category. Qash Aris will contact you for payment.
+                    </p>
+                  </div>
+                )}
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Creating account..." : "Sign Up"}
                 </Button>
