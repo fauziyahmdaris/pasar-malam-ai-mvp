@@ -44,36 +44,72 @@ const Dashboard = () => {
 
   const fetchUserData = async (userId: string) => {
     try {
-      const [rolesResult, profileResult] = await Promise.all([
-        supabase.from("user_roles").select("role").eq("user_id", userId),
-        supabase.from("profiles").select("*").eq("id", userId).single(),
-      ]);
+      // Fetch roles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
 
-      if (rolesResult.error) throw rolesResult.error;
-      if (profileResult.error) throw profileResult.error;
+      if (rolesError) {
+        console.error("Error fetching roles:", rolesError);
+        // Don't throw - continue with empty roles
+      }
 
-      if (rolesResult.data) {
-        // Verify roles exist
-        if (rolesResult.data.length === 0) {
-          // If no roles found, assign default customer role
-          const { error: insertError } = await supabase
-            .from("user_roles")
-            .insert({ user_id: userId, role: "customer" });
-            
-          if (insertError) throw insertError;
-          setRoles(["customer"]);
+      if (rolesData && rolesData.length > 0) {
+        setRoles(rolesData.map((r) => r.role));
+      } else {
+        // If no roles found, assign default customer role
+        const { error: insertError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: userId, role: "customer" });
+          
+        if (insertError) {
+          console.error("Error inserting default role:", insertError);
+        }
+        setRoles(["customer"]);
+      }
+
+      // Fetch profile - handle if it doesn't exist
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle(); // Use maybeSingle instead of single to avoid error if not found
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+      }
+
+      if (profileData) {
+        setProfile(profileData);
+      } else {
+        // Create profile if it doesn't exist
+        const { data: userData } = await supabase.auth.getUser();
+        const { data: newProfile, error: createError } = await supabase
+          .from("profiles")
+          .insert({
+            id: userId,
+            full_name: userData.user?.user_metadata?.full_name || "User",
+            phone_number: userData.user?.user_metadata?.phone_number || "",
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error("Error creating profile:", createError);
+          // Set basic profile from auth data
+          setProfile({
+            id: userId,
+            full_name: userData.user?.user_metadata?.full_name || "User",
+          });
         } else {
-          setRoles(rolesResult.data.map((r) => r.role));
+          setProfile(newProfile);
         }
       }
-
-      if (profileResult.data) {
-        setProfile(profileResult.data);
-      }
     } catch (error: any) {
-      console.error("Error fetching user data:", error);
-      toast.error("Failed to load user data");
-      navigate("/auth");
+      console.error("Unexpected error fetching user data:", error);
+      // Don't navigate away - just show error
+      toast.error("Some data couldn't be loaded. Please refresh the page.");
     } finally {
       setLoading(false);
     }
